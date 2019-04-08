@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Data.Entity;
+using Microsoft.EntityFrameworkCore;
 using System.Linq;
 
 namespace PortEF6toCore.Edmx
@@ -13,8 +13,8 @@ namespace PortEF6toCore.Edmx
             // Re - create database
             using (var context = new IssueTrackingContext())
             {
-                context.Database.Delete();
-                context.Database.CreateIfNotExists();
+                context.Database.EnsureDeleted();
+                context.Database.EnsureCreated();
             }
 
             // Seed data
@@ -25,14 +25,14 @@ namespace PortEF6toCore.Edmx
                     {
                         Name = "divega",
                         FullName = "Diego Vega"
-                    });
+                    }).Entity;
 
                 var smitpatel = context.Users.Add(
                     new User
                     {
                         Name = "smitpatel",
                         FullName = "Smit Patel"
-                    });
+                    }).Entity;
 
                 var repo = context.Repos.Add(
                     new Repo
@@ -40,16 +40,27 @@ namespace PortEF6toCore.Edmx
                         Name = "PortEF6ToCore",
                         CreatedBy = divega,
                         CreatedOn = DateTime.Now
-                    });
+                    }).Entity;
 
                 var issue = context.Issues.Add(
-                    new Enhancement
+                    new Issue
                     {
                         Repo = repo,
                         Title = "Consider porting to EF Core",
                         CreatedBy = divega,
                         CreatedOn = DateTime.Now,
-                        Assignees = new List<User> { divega, smitpatel },
+                        Assignments = 
+                            new List<Assignment>
+                            {
+                                new Assignment { User = divega },
+                                new Assignment { User = smitpatel }
+                            },
+                    }).Entity;
+
+                var enhancement = context.Enhancements.Add(
+                    new Enhancement
+                    {
+                        Issue = issue,
                         Votes = 1
                     });
 
@@ -71,12 +82,14 @@ namespace PortEF6toCore.Edmx
                 var query =
                     context.Repos.Where(r => r.Name == "PortEF6ToCore")
                         .Include(r => r.CreatedBy)
-                        .Include(r => r.Issues.Select(i => i.Assignees))
-                        .Include(r => r.Issues.Select(i => i.Comments));
+                        .Include(r => r.Issues).ThenInclude(i => i.Bug)
+                        .Include(r => r.Issues).ThenInclude(i => i.Enhancement)
+                        .Include(r => r.Issues).ThenInclude(i => i.Assignments).ThenInclude(a => a.User)
+                        .Include(r => r.Issues).ThenInclude(i => i.Comments);
 
                 var results = query.ToList();
 
-                Show(context.Issues.Local);
+                Show(context.Issues.Local.ToObservableCollection());
             }
         }
 
@@ -85,20 +98,20 @@ namespace PortEF6toCore.Edmx
             foreach (var issue in issues)
             {
                 Console.WriteLine($"Issue #{issue.Id}: {issue.Title} (Created by {issue.CreatedByName} on {issue.CreatedOn})");
-                switch (issue)
+                if (issue.Enhancement != null)
                 {
-                    case Enhancement enhancement:
-                        Console.WriteLine($"  Enhancement Votes: {enhancement.Votes}");
-                        break;
-                    case Bug bug:
-                        Console.WriteLine($"  Bug Repro: {bug.ReproSteps}");
-                        break;
+                    Console.WriteLine($"  Enhancement Votes: {issue.Enhancement.Votes}");
+                }
+
+                if (issue.Bug != null)
+                {
+                    Console.WriteLine($"  Bug Repro: {issue.Bug.ReproSteps}");
                 }
 
                 Console.WriteLine("  Assignees:");
-                foreach (var assignee in issue.Assignees)
+                foreach (var assignment in issue.Assignments)
                 {
-                    Console.WriteLine($"    {assignee.Name} ({assignee.FullName})");
+                    Console.WriteLine($"    {assignment.User.Name} ({assignment.User.FullName})");
                 }
 
                 Console.WriteLine("  Comments:");

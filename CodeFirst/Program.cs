@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
-using System.Data.Entity;
+using Microsoft.EntityFrameworkCore;
 using System.Linq;
 
 namespace PortEF6ToCore.CodeFirst
@@ -30,7 +30,7 @@ namespace PortEF6ToCore.CodeFirst
     {
         public int Id { get; set; }
         public string Title { get; set; }
-        public ICollection<User> Assignees { get; set; }
+        public ICollection<Assignment> Assignments { get; set; }
         public Repo Repo { get; set; }
         public int RepoId { get; set; }
         public ICollection<Comment> Comments { get; set; }
@@ -50,39 +50,48 @@ namespace PortEF6ToCore.CodeFirst
         public User CreatedBy { get; set; }
     }
 
+    public class Assignment
+    {
+        public string UserName { get; set; }
+        public int IssueId { get; set; }
+        public User User { get; set; }
+        public Issue Issue { get; set; }
+    }
+
     public class MyIssueTrackingContext : DbContext
     {
+        private readonly string _connectionString;
 
-        public MyIssueTrackingContext() : base()
+        public MyIssueTrackingContext(string connectionString)
         {
+            _connectionString = connectionString;
         }
-        public MyIssueTrackingContext(string nameOrConnectionString) : base(nameOrConnectionString)
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
+            optionsBuilder.UseSqlServer(_connectionString);
         }
 
         public DbSet<User> Users { get; set; }
         public DbSet<Repo> Repos { get; set; }
         public DbSet<Issue> Issues { get; set; }
         public DbSet<Comment> Comments { get; set; }
+        public DbSet<Assignment> Assignments { get; set; }
 
-        protected override void OnModelCreating(DbModelBuilder modelBuilder)
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Repo>()
                 .ToTable("Repos");
 
             modelBuilder.Entity<Issue>()
-                .HasMany(i => i.Assignees)
-                .WithMany()
-                .Map(linkTable => linkTable
-                    .ToTable("Assignments")
-                    .MapLeftKey("IssueId")
-                    .MapRightKey("UserName"));
-
-            modelBuilder.Entity<Issue>()
                 .HasMany(i => i.Comments)
-                .WithRequired(c => c.Issue)
+                .WithOne(c => c.Issue)
+                .IsRequired(true)
                 .HasForeignKey(c => c.IssueId)
-                .WillCascadeOnDelete(true);
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Assignment>()
+                .HasKey(a => new { a.UserName, a.IssueId });
         }
     }
 
@@ -95,8 +104,8 @@ namespace PortEF6ToCore.CodeFirst
             // Re-create database
             using (var context = new MyIssueTrackingContext(connectionString))
             {
-                context.Database.Delete();
-                context.Database.CreateIfNotExists();
+                context.Database.EnsureDeleted();
+                context.Database.EnsureCreated();
             }
 
             // Seed data
@@ -107,14 +116,14 @@ namespace PortEF6ToCore.CodeFirst
                     {
                         Name = "divega",
                         FullName = "Diego Vega"
-                    });
+                    }).Entity;
 
                 var smitpatel = context.Users.Add(
                     new User
                     {
                         Name = "smitpatel",
                         FullName = "Smit Patel"
-                    });
+                    }).Entity;
 
                 var repo = context.Repos.Add(
                     new Repo
@@ -122,7 +131,7 @@ namespace PortEF6ToCore.CodeFirst
                         Name = "PortEF6ToCore",
                         CreatedBy = divega,
                         CreatedOn = DateTime.Now
-                    });
+                    }).Entity;
 
                 var issue = context.Issues.Add(
                     new Issue
@@ -131,7 +140,21 @@ namespace PortEF6ToCore.CodeFirst
                         Title = "Consider porting to EF Core",
                         CreatedBy = divega,
                         CreatedOn = DateTime.Now,
-                        Assignees = new List<User> { divega, smitpatel }
+
+                    }).Entity;
+
+                context.Assignments.Add(
+                    new Assignment
+                    {
+                        User = divega,
+                        Issue = issue
+                    });
+
+                context.Assignments.Add(
+                    new Assignment
+                    {
+                        User = smitpatel,
+                        Issue = issue
                     });
 
                 var comment = context.Comments.Add(
@@ -141,7 +164,7 @@ namespace PortEF6ToCore.CodeFirst
                         Text = "Are we done yet?",
                         CreatedBy = divega,
                         CreatedOn = DateTime.Now
-                    });
+                    }).Entity;
 
                 context.SaveChanges();
             }
@@ -152,12 +175,12 @@ namespace PortEF6ToCore.CodeFirst
                 var query =
                     context.Repos.Where(r => r.Name == "PortEF6ToCore")
                         .Include(r => r.CreatedBy)
-                        .Include(r => r.Issues.Select(i => i.Assignees))
-                        .Include(r => r.Issues.Select(i => i.Comments));
+                        .Include(r => r.Issues).ThenInclude(i => i.Assignments).ThenInclude(a => a.User)
+                        .Include(r => r.Issues).ThenInclude(i => i.Comments);
 
                 var results = query.ToList();
 
-                Show(context.Issues.Local);
+                Show(context.Issues.Local.ToObservableCollection());
             }
         }
 
@@ -168,8 +191,9 @@ namespace PortEF6ToCore.CodeFirst
                 Console.WriteLine($"Issue #{issue.Id}: {issue.Title} (Created by {issue.CreatedByName} on {issue.CreatedOn})");
 
                 Console.WriteLine("  Assignees:");
-                foreach (var assignee in issue.Assignees)
+                foreach (var assignment in issue.Assignments)
                 {
+                    var assignee = assignment.User;
                     Console.WriteLine($"    {assignee.Name} ({assignee.FullName})");
                 }
 
