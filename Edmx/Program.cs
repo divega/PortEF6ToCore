@@ -8,8 +8,12 @@ namespace PortEF6toCore.Edmx
 {
     class Program
     {
+        readonly static string repoDetails = "AwsomeEDMXRepo";
+
         static void Main(string[] args)
         {
+            //string connectionString = @"server=.;database=MyIssueTracking;Integrated Security=true;ConnectRetryCount=0"
+
             // Re - create database
             using (var context = new IssueTrackingContext())
             {
@@ -17,40 +21,57 @@ namespace PortEF6toCore.Edmx
                 context.Database.CreateIfNotExists();
             }
 
-            // Seed data
+            PopulatedDataToDB();
+
+            // Execute query and show results
+            using (var context = new IssueTrackingContext())
+            {
+                var query =
+                    context.Repos.Where(r => r.Name == repoDetails)
+                        .Include(r => r.CreatedBy)
+                        .Include(r => r.Issues.Select(i => i.Assignees))
+                        .Include(r => r.Issues.Select(i => i.Comments));
+
+                var results = query.ToList();
+
+                WriteOutData(context.Issues.Local);
+            }
+        }
+
+        static void PopulatedDataToDB()
+        {  
             using (var context = new IssueTrackingContext())
             {
                 var divega = context.Users.Add(
                     new User
                     {
-                        Name = "divega",
-                        FullName = "Diego Vega"
+                        Name = "giulianop",
+                        FullName = "Giuliano Pizzocaro"
                     });
 
                 var smitpatel = context.Users.Add(
                     new User
                     {
-                        Name = "smitpatel",
-                        FullName = "Smit Patel"
+                        Name = "tinusv",
+                        FullName = "Tinus Van Eck"
                     });
 
                 var repo = context.Repos.Add(
                     new Repo
                     {
-                        Name = "PortEF6ToCore",
+                        Name = repoDetails,
                         CreatedBy = divega,
                         CreatedOn = DateTime.Now
                     });
 
                 var issue = context.Issues.Add(
-                    new Enhancement
+                    new Issue
                     {
                         Repo = repo,
                         Title = "Consider porting to EF Core",
                         CreatedBy = divega,
                         CreatedOn = DateTime.Now,
-                        Assignees = new List<User> { divega, smitpatel },
-                        Votes = 1
+                        Assignees = new List<User> { divega, smitpatel }
                     });
 
                 var comment = context.Comments.Add(
@@ -64,36 +85,13 @@ namespace PortEF6toCore.Edmx
 
                 context.SaveChanges();
             }
-
-            // Execute query and show results
-            using (var context = new IssueTrackingContext())
-            {
-                var query =
-                    context.Repos.Where(r => r.Name == "PortEF6ToCore")
-                        .Include(r => r.CreatedBy)
-                        .Include(r => r.Issues.Select(i => i.Assignees))
-                        .Include(r => r.Issues.Select(i => i.Comments));
-
-                var results = query.ToList();
-
-                Show(context.Issues.Local);
-            }
         }
 
-        static void Show(ObservableCollection<Issue> issues)
+        static void WriteOutData(ObservableCollection<Issue> issues)
         {
             foreach (var issue in issues)
             {
                 Console.WriteLine($"Issue #{issue.Id}: {issue.Title} (Created by {issue.CreatedByName} on {issue.CreatedOn})");
-                switch (issue)
-                {
-                    case Enhancement enhancement:
-                        Console.WriteLine($"  Enhancement Votes: {enhancement.Votes}");
-                        break;
-                    case Bug bug:
-                        Console.WriteLine($"  Bug Repro: {bug.ReproSteps}");
-                        break;
-                }
 
                 Console.WriteLine("  Assignees:");
                 foreach (var assignee in issue.Assignees)
@@ -107,6 +105,8 @@ namespace PortEF6toCore.Edmx
                     Console.WriteLine($"    {comment.Text} (Created by {comment.CreatedByName} on {comment.CreatedOn})");
                 }
             }
+
+            Console.ReadLine();
         }
     }
 }
