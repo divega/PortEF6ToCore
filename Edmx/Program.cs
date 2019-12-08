@@ -43,35 +43,36 @@ namespace PortEF6toCore.Edmx
             using (var context = new IssueTrackingContext())
             {
                 var divega = context.Users.Add(
-                    new User
-                    {
-                        Name = "giulianop",
-                        FullName = "Giuliano Pizzocaro"
-                    });
+                   new User
+                   {
+                       Name = "divega",
+                       FullName = "Diego Vega"
+                   });
 
                 var smitpatel = context.Users.Add(
                     new User
                     {
-                        Name = "tinusv",
-                        FullName = "Tinus Van Eck"
+                        Name = "smitpatel",
+                        FullName = "Smit Patel"
                     });
 
                 var repo = context.Repos.Add(
                     new Repo
                     {
-                        Name = repoDetails,
+                        Name = "PortEF6ToCore",
                         CreatedBy = divega,
                         CreatedOn = DateTime.Now
                     });
 
                 var issue = context.Issues.Add(
-                    new Issue
+                    new Enhancement
                     {
                         Repo = repo,
                         Title = "Consider porting to EF Core",
                         CreatedBy = divega,
                         CreatedOn = DateTime.Now,
-                        Assignees = new List<User> { divega, smitpatel }
+                        Assignees = new List<User> { divega, smitpatel },
+                        Votes = 1
                     });
 
                 var comment = context.Comments.Add(
