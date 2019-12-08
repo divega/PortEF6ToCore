@@ -42,25 +42,25 @@ namespace PortEF6toCore.Edmx
         {  
             using (var context = new IssueTrackingContext())
             {
-                var divega = context.Users.Add(
+                var giulianop = context.Users.Add(
                    new User
                    {
-                       Name = "divega",
-                       FullName = "Diego Vega"
+                       Name = "giulianop",
+                       FullName = "Giuliano Pizzocaro"
                    });
 
-                var smitpatel = context.Users.Add(
+                var tinusv = context.Users.Add(
                     new User
                     {
-                        Name = "smitpatel",
-                        FullName = "Smit Patel"
+                        Name = "tinusv",
+                        FullName = "Tinus Van Eck"
                     });
 
                 var repo = context.Repos.Add(
                     new Repo
                     {
-                        Name = "PortEF6ToCore",
-                        CreatedBy = divega,
+                        Name = repoDetails,
+                        CreatedBy = giulianop,
                         CreatedOn = DateTime.Now
                     });
 
@@ -69,9 +69,9 @@ namespace PortEF6toCore.Edmx
                     {
                         Repo = repo,
                         Title = "Consider porting to EF Core",
-                        CreatedBy = divega,
+                        CreatedBy = giulianop,
                         CreatedOn = DateTime.Now,
-                        Assignees = new List<User> { divega, smitpatel },
+                        Assignees = new List<User> { giulianop, tinusv },
                         Votes = 1
                     });
 
@@ -80,7 +80,7 @@ namespace PortEF6toCore.Edmx
                     {
                         Issue = issue,
                         Text = "Are we done yet?",
-                        CreatedBy = divega,
+                        CreatedBy = giulianop,
                         CreatedOn = DateTime.Now
                     });
 
@@ -89,10 +89,19 @@ namespace PortEF6toCore.Edmx
         }
 
         static void WriteOutData(ObservableCollection<Issue> issues)
-        {
+        {            
             foreach (var issue in issues)
             {
                 Console.WriteLine($"Issue #{issue.Id}: {issue.Title} (Created by {issue.CreatedByName} on {issue.CreatedOn})");
+                switch (issue)
+                {
+                    case Enhancement enhancement:
+                        Console.WriteLine($"  Enhancement Votes: {enhancement.Votes}");
+                        break;
+                    case Bug bug:
+                        Console.WriteLine($"  Bug Repro: {bug.ReproSteps}");
+                        break;
+                }
 
                 Console.WriteLine("  Assignees:");
                 foreach (var assignee in issue.Assignees)
@@ -105,7 +114,7 @@ namespace PortEF6toCore.Edmx
                 {
                     Console.WriteLine($"    {comment.Text} (Created by {comment.CreatedByName} on {comment.CreatedOn})");
                 }
-            }
+            }            
 
             Console.ReadLine();
         }

@@ -128,14 +128,14 @@ namespace PortEF6ToCore.CodeFirst
         {
             using (var context = new MyIssueTrackingContext(connectionString))
             {
-                var divega = context.Users.Add(
+                var giulianop = context.Users.Add(
                     new User
                     {
                         Name = "giulianop",
                         FullName = "Giuliano Pizzocaro"
                     });
 
-                var smitpatel = context.Users.Add(
+                var tinusv = context.Users.Add(
                     new User
                     {
                         Name = "tinusv",
@@ -146,7 +146,7 @@ namespace PortEF6ToCore.CodeFirst
                     new Repo
                     {
                         Name = repoDetails,
-                        CreatedBy = divega,
+                        CreatedBy = giulianop,
                         CreatedOn = DateTime.Now
                     });
 
@@ -155,9 +155,9 @@ namespace PortEF6ToCore.CodeFirst
                     {
                         Repo = repo,
                         Title = "Consider porting to EF Core",
-                        CreatedBy = divega,
+                        CreatedBy = giulianop,
                         CreatedOn = DateTime.Now,
-                        Assignees = new List<User> { divega, smitpatel }
+                        Assignees = new List<User> { giulianop, tinusv }
                     });
 
                 var comment = context.Comments.Add(
@@ -165,7 +165,7 @@ namespace PortEF6ToCore.CodeFirst
                     {
                         Issue = issue,
                         Text = "Are we done yet?",
-                        CreatedBy = divega,
+                        CreatedBy = giulianop,
                         CreatedOn = DateTime.Now
                     });
 
