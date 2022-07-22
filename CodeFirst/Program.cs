@@ -7,6 +7,8 @@ using System.Linq;
 
 namespace PortEF6ToCore.CodeFirst
 {
+    #region - Models -
+
     public class User
     {
         [Key]
@@ -85,12 +87,18 @@ namespace PortEF6ToCore.CodeFirst
                 .WillCascadeOnDelete(true);
         }
     }
+    #endregion
+
+    
 
     class Program
     {
+        readonly static string repoDetails = "AwsomeEDMXRepo";
+
         static void Main(string[] args)
         {
-            var connectionString = @"server=(localdb)\mssqllocaldb;database=MyIssueTracking;Integrated Security=true;ConnectRetryCount=0";
+            string connectionString = @"server=.;database=MyIssueTracking;Integrated Security=true;ConnectRetryCount=0";
+            string repoDetails = "AwsomeCodeFirstRepo";
 
             // Re-create database
             using (var context = new MyIssueTrackingContext(connectionString))
@@ -99,28 +107,46 @@ namespace PortEF6ToCore.CodeFirst
                 context.Database.CreateIfNotExists();
             }
 
-            // Seed data
+            PopulatedDataToDB(connectionString);
+
+            // Execute query and show results
             using (var context = new MyIssueTrackingContext(connectionString))
             {
-                var divega = context.Users.Add(
+                var query =
+                    context.Repos.Where(r => r.Name == repoDetails)
+                        .Include(r => r.CreatedBy)
+                        .Include(r => r.Issues.Select(i => i.Assignees))
+                        .Include(r => r.Issues.Select(i => i.Comments));
+
+                var results = query.ToList();
+
+                WriteOutData(context.Issues.Local);
+            }
+        }
+
+        static void PopulatedDataToDB(string connectionString)
+        {
+            using (var context = new MyIssueTrackingContext(connectionString))
+            {
+                var giulianop = context.Users.Add(
                     new User
                     {
-                        Name = "divega",
-                        FullName = "Diego Vega"
+                        Name = "giulianop",
+                        FullName = "Giuliano Pizzocaro"
                     });
 
-                var smitpatel = context.Users.Add(
+                var tinusv = context.Users.Add(
                     new User
                     {
-                        Name = "smitpatel",
-                        FullName = "Smit Patel"
+                        Name = "tinusv",
+                        FullName = "Tinus Van Eck"
                     });
 
                 var repo = context.Repos.Add(
                     new Repo
                     {
-                        Name = "PortEF6ToCore",
-                        CreatedBy = divega,
+                        Name = repoDetails,
+                        CreatedBy = giulianop,
                         CreatedOn = DateTime.Now
                     });
 
@@ -129,9 +155,9 @@ namespace PortEF6ToCore.CodeFirst
                     {
                         Repo = repo,
                         Title = "Consider porting to EF Core",
-                        CreatedBy = divega,
+                        CreatedBy = giulianop,
                         CreatedOn = DateTime.Now,
-                        Assignees = new List<User> { divega, smitpatel }
+                        Assignees = new List<User> { giulianop, tinusv }
                     });
 
                 var comment = context.Comments.Add(
@@ -139,29 +165,15 @@ namespace PortEF6ToCore.CodeFirst
                     {
                         Issue = issue,
                         Text = "Are we done yet?",
-                        CreatedBy = divega,
+                        CreatedBy = giulianop,
                         CreatedOn = DateTime.Now
                     });
 
                 context.SaveChanges();
             }
-
-            // Execute query and show results
-            using (var context = new MyIssueTrackingContext(connectionString))
-            {
-                var query =
-                    context.Repos.Where(r => r.Name == "PortEF6ToCore")
-                        .Include(r => r.CreatedBy)
-                        .Include(r => r.Issues.Select(i => i.Assignees))
-                        .Include(r => r.Issues.Select(i => i.Comments));
-
-                var results = query.ToList();
-
-                Show(context.Issues.Local);
-            }
         }
 
-        static void Show(ObservableCollection<Issue> issues)
+        static void WriteOutData(ObservableCollection<Issue> issues)
         {
             foreach (var issue in issues)
             {
@@ -179,6 +191,8 @@ namespace PortEF6ToCore.CodeFirst
                     Console.WriteLine($"    {comment.Text} (Created by {comment.CreatedByName} on {comment.CreatedOn})");
                 }
             }
+
+            Console.ReadLine();
         }
     }
 }
